@@ -1,84 +1,82 @@
-// Tower Kit documentation https://tower.hardwario.com/
-// SDK API description https://sdk.hardwario.com/
-// Forum https://forum.hardwario.com/
+/**
+ * @file application.c
+ * @brief Firmware pro monitorování teploty v inkubátoru (IoT uzel).
+ * @author Pavel Černý, Barbora Šimková, Štěpán Hruška, Tereza Holubcová, Václav Haba
+ * @version 1.0
+ * * Tento kód inicializuje teploměr TMP112 a odesílá naměřená data
+ * v pravidelných intervalech přes rádiový modul do brány (Gateway).
+ */
 
 #include <application.h>
 
-// LED instance
+/** @brief Instance LED ovladače pro vizuální signalizaci */
 twr_led_t led;
 
-// Button instance
-twr_button_t button;
-
-// Thermometer instance
+/** @brief Instance ovladače teploměru TMP112 */
 twr_tmp112_t tmp112;
-uint16_t button_click_count = 0;
 
-// Button event callback 
-void button_event_handler(twr_button_t *self, twr_button_event_t event, void *event_param)
-{
-    // Log button event
-    twr_log_info("APP: Button event: %i", event);
-
-    // Check event source
-    if (event == TWR_BUTTON_EVENT_CLICK)
-    {
-        // Toggle LED pin state
-        twr_led_set_mode(&led, TWR_LED_MODE_TOGGLE);
-
-         // Publish message on radio
-        button_click_count++;
-        twr_radio_pub_push_button(&button_click_count);
-    }
-}
-
+/**
+ * @brief Callback funkce, která obsluhuje události z teploměru.
+ * * @param self Ukazatel na instanci teploměru, která událost vyvolala.
+ * @param event Typ události (např. aktualizace dat).
+ * @param event_param Volitelný parametr předaný při inicializaci.
+ */
 void tmp112_event_handler(twr_tmp112_t *self, twr_tmp112_event_t event, void *event_param)
 {
+    // Reagujeme pouze na událost aktualizace naměřených dat
     if (event == TWR_TMP112_EVENT_UPDATE)
     {
         float celsius;
-        // Read temperature
-        twr_tmp112_get_temperature_celsius(self, &celsius);
+        
+        // Přečtení aktuální teploty v stupních Celsia
+        if (twr_tmp112_get_temperature_celsius(self, &celsius))
+        {
+            // Výpis hodnoty do ladicí konzole (Debugger)
+            twr_log_debug("APP: Teplota naměřena: %.2f °C", celsius);
 
-        twr_log_debug("APP: temperature: %.2f °C", celsius);
-
-        twr_radio_pub_temperature(TWR_RADIO_PUB_CHANNEL_R1_I2C0_ADDRESS_ALTERNATE, &celsius);
+            // Odeslání hodnoty rádiem na zadaném kanálu
+            twr_radio_pub_temperature(TWR_RADIO_PUB_CHANNEL_R1_I2C0_ADDRESS_ALTERNATE, &celsius);
+            
+            // Krátké bliknutí LED pro indikaci úspěšného odeslání dat
+            twr_led_pulse(&led, 50);
+        }
     }
 }
 
-// Application initialization function which is called once after boot
+/**
+ * @brief Hlavní inicializační funkce aplikace. Volá se jednou po startu.
+ * Nastavuje hardware a plánuje první úlohy.
+ */
 void application_init(void)
 {
-    // Initialize logging
+    // Inicializace subsystému pro logování (výpisy do konzole)
     twr_log_init(TWR_LOG_LEVEL_DUMP, TWR_LOG_TIMESTAMP_ABS);
 
-    // Initialize LED
+    // Konfigurace systémové LED diody (výchozí stav vypnuto)
     twr_led_init(&led, TWR_GPIO_LED, false, 0);
+    // Úvodní bliknutí signalizující start zařízení
     twr_led_pulse(&led, 2000);
 
-    // Initialize button
-    twr_button_init(&button, TWR_GPIO_BUTTON, TWR_GPIO_PULL_DOWN, 0);
-    twr_button_set_event_handler(&button, button_event_handler, NULL);
-
-    // Initialize thermometer on core module
+    // Inicializace senzoru TMP112 na sběrnici I2C0 s adresou 0x49
     twr_tmp112_init(&tmp112, TWR_I2C_I2C0, 0x49);
+    // Registrace obslužné funkce pro události ze senzoru
     twr_tmp112_set_event_handler(&tmp112, tmp112_event_handler, NULL);
+    
+    // Nastavení intervalu měření a odesílání na 10 000 ms (10 sekund)
     twr_tmp112_set_update_interval(&tmp112, 10000);
 
-    // Initialize radio
+    // Aktivace rádiového přenosu v energeticky úsporném režimu
     twr_radio_init(TWR_RADIO_MODE_NODE_SLEEPING);
-    // Send radio pairing request
-    twr_radio_pairing_request("skeleton", FW_VERSION);
+    
+    // Odeslání párovacího požadavku se jménem projektu
+    twr_radio_pairing_request("inkubator-projekt", FW_VERSION);
 }
 
-// Application task function (optional) which is called peridically if scheduled
+/**
+ * @brief Periodicky volaná funkce pro naplánované úlohy.
+ * V tomto projektu se nevyužívá, protože veškerou logiku řídí události (events).
+ */
 void application_task(void)
 {
-    static int counter = 0;
-
-    // Log task run and increment counter
-    twr_log_debug("APP: Task run (count: %d)", ++counter);
-
-    // Plan next run of this task in 1000 ms
-    twr_scheduler_plan_current_from_now(1000);
+    // Ponecháno prázdné pro budoucí rozšíření
 }
