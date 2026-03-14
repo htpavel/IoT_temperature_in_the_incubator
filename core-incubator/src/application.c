@@ -14,7 +14,7 @@ twr_button_t button;
 twr_tmp112_t tmp112;
 uint16_t button_click_count = 0;
 
-// Button event callback test
+// Button event callback 
 void button_event_handler(twr_button_t *self, twr_button_event_t event, void *event_param)
 {
     // Log button event
