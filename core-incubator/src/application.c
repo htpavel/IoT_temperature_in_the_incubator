@@ -75,14 +75,14 @@ void application_init(void)
     // Inicializace senzoru TMP112
     twr_tmp112_init(&tmp112, TWR_I2C_I2C0, 0x49);
     twr_tmp112_set_event_handler(&tmp112, tmp112_event_handler, NULL);
-    //twr_tmp112_set_update_interval(&tmp112, 300000); // 5 minut
-    twr_tmp112_set_update_interval(&tmp112, 10000); // 10 sekund pro vývoj
+    twr_tmp112_set_update_interval(&tmp112, 600000);  // 10 minut
+    //twr_tmp112_set_update_interval(&tmp112, 10000); // 10 sekund pro vývoj
 
     // Inicializace modulu baterie
     twr_module_battery_init();
     twr_module_battery_set_event_handler(battery_event_handler, NULL);
-    //twr_module_battery_set_update_interval(3600000); // 1 hodina (šetří energii)
-    twr_module_battery_set_update_interval(10000); // 10 sekund pro vývoj
+    twr_module_battery_set_update_interval(3600000); // 1 hodina (šetří energii)
+    //twr_module_battery_set_update_interval(10000); // 10 sekund pro vývoj
 
     twr_radio_init(TWR_RADIO_MODE_NODE_SLEEPING);
     
